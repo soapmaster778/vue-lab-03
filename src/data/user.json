@@ -27,5 +27,7 @@
   },
   "phone": "02-689-410",
   "cell": "043-730-12-94",
-  "picture": "https://randomuser.me/api/portraits/women/87.jpg"
+  "picture": "https://randomuser.me/api/portraits/women/87.jpg",
+  "hobbies": ["Подорожі", "Фотографія", "Піші прогулянки", "Читання", "Кулінарія", "Музика"],
+  "details": "Емма цікавиться подорожами, фотографією та любить проводити час на природі."
 }

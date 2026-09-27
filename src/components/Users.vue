@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import userData from '@/data/user.json'
 
 defineOptions({
@@ -212,6 +212,10 @@ const userSeeds: UserSeed[] = [
   },
 ]
 
+type GenderFilter = 'all' | User['gender']
+type AgeFilter = 'all' | '18-plus'
+type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
+
 const users: User[] = [
   {
     ...baseUser,
@@ -250,6 +254,67 @@ const users: User[] = [
   })),
 ]
 
+const genderFilter = ref<GenderFilter>('all')
+const ageFilter = ref<AgeFilter>('all')
+const sortOption = ref<SortOption>('default')
+
+const displayedUsers = computed<User[]>(() => {
+  let result = users.filter((user) => {
+    if (genderFilter.value === 'all') {
+      return true
+    }
+
+    return user.gender === genderFilter.value
+  })
+
+  if (ageFilter.value === '18-plus') {
+    result = result.filter((user) => user.dob.age >= 18)
+  }
+
+  if (sortOption.value === 'default') {
+    return result
+  }
+
+  const sortedUsers = [...result]
+
+  switch (sortOption.value) {
+    case 'name-asc':
+      return sortedUsers.sort(compareUsersByName)
+
+    case 'name-desc':
+      return sortedUsers.sort((firstUser, secondUser) => compareUsersByName(secondUser, firstUser))
+
+    case 'age-asc':
+      return sortedUsers.sort((firstUser, secondUser) => firstUser.dob.age - secondUser.dob.age)
+
+    case 'age-desc':
+      return sortedUsers.sort((firstUser, secondUser) => secondUser.dob.age - firstUser.dob.age)
+
+    default:
+      return sortedUsers
+  }
+})
+
+function resetFilters(): void {
+  genderFilter.value = 'all'
+  ageFilter.value = 'all'
+  sortOption.value = 'default'
+}
+
+function compareUsersByName(firstUser: User, secondUser: User): number {
+  const firstNameComparison = firstUser.name.first.localeCompare(secondUser.name.first, 'en', {
+    sensitivity: 'base',
+  })
+
+  if (firstNameComparison !== 0) {
+    return firstNameComparison
+  }
+
+  return firstUser.name.last.localeCompare(secondUser.name.last, 'en', {
+    sensitivity: 'base',
+  })
+}
+
 const visibleDetails = ref<Record<number, boolean>>({})
 
 function getFullName(user: User): string {
@@ -271,9 +336,93 @@ function toggleDetails(userId: number): void {
 
 <template>
   <section class="users-page">
-    <div v-if="users.length > 0" class="users-list">
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Стать:</span>
+
+        <button
+          type="button"
+          :class="{ active: genderFilter === 'all' }"
+          @click="genderFilter = 'all'"
+        >
+          Всі
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: genderFilter === 'male' }"
+          @click="genderFilter = 'male'"
+        >
+          Чоловіки
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: genderFilter === 'female' }"
+          @click="genderFilter = 'female'"
+        >
+          Жінки
+        </button>
+      </div>
+
+      <div class="toolbar-group">
+        <span class="toolbar-label">Вік:</span>
+
+        <button type="button" :class="{ active: ageFilter === 'all' }" @click="ageFilter = 'all'">
+          Всі
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: ageFilter === '18-plus' }"
+          @click="ageFilter = '18-plus'"
+        >
+          18+
+        </button>
+      </div>
+
+      <div class="toolbar-group">
+        <span class="toolbar-label">Сортування:</span>
+
+        <button
+          type="button"
+          :class="{ active: sortOption === 'name-asc' }"
+          @click="sortOption = 'name-asc'"
+        >
+          Ім’я ↑
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: sortOption === 'name-desc' }"
+          @click="sortOption = 'name-desc'"
+        >
+          Ім’я ↓
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: sortOption === 'age-asc' }"
+          @click="sortOption = 'age-asc'"
+        >
+          Вік ↑
+        </button>
+
+        <button
+          type="button"
+          :class="{ active: sortOption === 'age-desc' }"
+          @click="sortOption = 'age-desc'"
+        >
+          Вік ↓
+        </button>
+      </div>
+
+      <button class="clear-button" type="button" @click="resetFilters">Очистити все</button>
+    </div>
+
+    <div v-if="displayedUsers.length > 0" class="users-list">
       <article
-        v-for="user in users"
+        v-for="user in displayedUsers"
         :key="user.id"
         class="user-card"
         :class="{
@@ -360,6 +509,54 @@ function toggleDetails(userId: number): void {
 <style scoped>
 .users-page {
   width: 100%;
+}
+
+.toolbar {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 720px);
+  padding-bottom: 16px;
+  margin: 0 auto 18px;
+  border-bottom: 1px solid #d8dee8;
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.toolbar-label {
+  width: 100px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.toolbar button {
+  padding: 6px 10px;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar button:hover {
+  background: #f1f5f9;
+}
+
+.toolbar button.active {
+  color: #ffffff;
+  background: #172554;
+  border-color: #172554;
+}
+
+.toolbar .clear-button {
+  justify-self: start;
+  color: #b42318;
+  border-color: #f0b4ae;
 }
 
 .users-list {
